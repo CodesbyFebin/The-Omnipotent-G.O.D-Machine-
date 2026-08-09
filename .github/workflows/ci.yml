@@ -38,6 +38,57 @@ jobs:
       - name: Build
         run: pnpm -r --if-present build
 
+  integration:
+    name: Integration — Postgres + RLS + auth flow
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: god
+          POSTGRES_PASSWORD: god
+          POSTGRES_DB: god_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U god -d god_test"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 20
+    env:
+      DATABASE_URL: postgres://god:god@localhost:5432/god_test
+      SESSION_SECRET: ci-only-not-a-secret
+      NODE_ENV: test
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.12.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Migrate from zero (P1-009: fresh DB path)
+        run: pnpm --filter @god/db migrate
+
+      - name: Verify re-migrate on the same DB is a no-op
+        run: pnpm --filter @god/db migrate
+
+      - name: Wipe and re-migrate (destroy/recreate coverage)
+        run: |
+          PGPASSWORD=god psql -h localhost -U god -d god_test \
+            -c "DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public;"
+          pnpm --filter @god/db migrate
+
+      - name: Run integration tests
+        run: pnpm --filter @god/integration-tests test
+
   docs:
     name: Docs — links and structure
     runs-on: ubuntu-latest
