@@ -52,3 +52,11 @@ export const newRepositoryId = () => prefixId('rpo');
 export const newMissionId = () => prefixId('msn');
 export const newTaskId = () => prefixId('tsk');
 export const newEventId = () => prefixId('evt');
+
+// Phase 2A: mission runtime
+export const newMissionRunId = () => prefixId('mrn');
+export const newTaskRunId = () => prefixId('trn');
+export const newTaskAttemptId = () => prefixId('att');
+export const newTaskLeaseId = () => prefixId('lse');
+export const newTaskResultId = () => prefixId('res');
+export const newEvidenceId = () => prefixId('evd');
