@@ -74,13 +74,13 @@ jobs:
       - name: Install
         run: pnpm install --frozen-lockfile
 
-      - name: Migrate from zero (P1-009: fresh DB path)
+      - name: "Migrate from zero (P1-009 fresh DB path)"
         run: pnpm --filter @god/db migrate
 
-      - name: Verify re-migrate on the same DB is a no-op
+      - name: "Verify re-migrate on the same DB is a no-op"
         run: pnpm --filter @god/db migrate
 
-      - name: Wipe and re-migrate (destroy/recreate coverage)
+      - name: "Wipe and re-migrate (destroy/recreate coverage)"
         run: |
           PGPASSWORD=god psql -h localhost -U god -d god_test \
             -c "DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public;"
