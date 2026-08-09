@@ -79,16 +79,79 @@ have schema + policy support but await Phase 2 endpoints to reach VERIFIED.
 
 ---
 
-## Phase 2 — GOD Brain
+## Phase 2A — Durable Mission Runtime (kernel)
+
+**Phase reordering per ADR-0007:** the durable runtime kernel lands
+*before* any LLM-driven intelligence. Downstream sections (Phase 3–7)
+still exist below with their original topic ordering (Router, Claw,
+Sandbox, Swarm, IDE, MCP, Workers, P99, Deployment, Self-Healing,
+EdgeNodes, Hardening); those numbers are scheduling labels and will be
+re-sequenced when each phase actually starts. What is frozen now is
+**this order: 2A kernel → 2B deterministic executors → GOD Brain →
+GOD Router → GOD Claw → GOD Swarm → P99.**
 
 | ID | Item | Component | Priority | Deps | Status |
 |----|------|-----------|----------|------|--------|
-| P2-001 | Intent compiler | services/god-brain | P0 | P1-004 | TODO |
-| P2-002 | Specification generator | services/god-brain | P0 | P2-001 | TODO |
-| P2-003 | Planner / decomposer | services/god-brain | P0 | P2-002 | TODO |
-| P2-004 | Task DAG persistence + state machine | services/mission-service | P0 | P1-004 | TODO |
-| P2-005 | Mission execution state controller | services/mission-service | P0 | P2-004 | TODO |
-| P2-006 | Reflection engine writes to GOD Memory | services/memory-service | P1 | P2-005 | TODO |
+| P2A-000 | ADR-0007: durable mission runtime (states, guarantees, invariants) | Docs | P0 | P1-005 | VERIFIED |
+| P2A-001 | Migration 0004: mission_runs, task_runs, task_attempts, task_leases, task_results, evidence, idempotency_keys | packages/db | P0 | P2A-000 | REVIEW *(migration applies locally on empty + on top of 0001+0002; RLS + FORCE + policies mirror Phase 1)* |
+| P2A-002 | Drizzle schema + typed IDs for runtime tables | packages/db | P0 | P2A-001 | REVIEW |
+| P2A-003 | Mission-run/task-run projector (append event → advance row state in same tx) | packages/runtime | P0 | P2A-002 | TODO |
+| P2A-004 | DAG readiness resolver (BLOCKED → READY when all deps SUCCEEDED) | packages/runtime | P0 | P2A-003 | TODO |
+| P2A-005 | Scheduler: `SELECT … FOR UPDATE SKIP LOCKED` claim, atomic lease + attempt + event | services/worker-runtime | P0 | P2A-004 | TODO |
+| P2A-006 | Worker loop: lease → heartbeat → execute → result + evidence → transition | services/worker-runtime | P0 | P2A-005 | TODO |
+| P2A-007 | Reclaimer: expired-lease sweep → LEASE_LOST + READY | services/worker-runtime | P0 | P2A-006 | TODO |
+| P2A-008 | Retry policy: `RETRY_WAIT` scheduling with exp-backoff+jitter, DLQ at exhaustion | services/worker-runtime | P0 | P2A-006 | TODO |
+| P2A-009 | Cancellation: mission_run cancel → cascade to non-terminal task_runs, tombstone leases | services/worker-runtime | P0 | P2A-006 | TODO |
+| P2A-010 | Idempotency broker: first-writer-wins around any executor side effect | packages/runtime | P0 | P2A-006 | TODO |
+| P2A-011 | Domain events for runtime lifecycle: `mission_run.*`, `task_run.*`, `task_attempt.*`, `lease.*` | packages/schemas + packages/events | P0 | P2A-003 | TODO |
+| P2A-012 | API: `POST /api/missions` (create), `POST /api/missions/:id/runs` (queue), `GET /api/mission-runs/:id`, `POST /api/mission-runs/:id/cancel` | apps/web | P0 | P2A-009 | TODO |
+| P2A-013 | Web: mission-run dashboard + DAG visualization (server components, no fake data) | apps/web | P1 | P2A-012 | TODO |
+| P2A-014 | Deterministic test executor package (`@god/executors-test`) for CI-only workloads | packages/executors-test | P0 | P2A-006 | TODO |
+
+### Phase 2A CI gate — 20 scenarios that must be green
+
+Each row is a distinct integration test scenario. `VERIFIED` for P2A
+requires **all 20** on CI with a fresh Postgres per run.
+
+| ID | Scenario | Deps | Status |
+|----|----------|------|--------|
+| P2A-CI-01 | Create mission + DAG persists correctly | P2A-012 | TODO |
+| P2A-CI-02 | Dependency ordering: dependent stays BLOCKED until upstream SUCCEEDED | P2A-004 | TODO |
+| P2A-CI-03 | Independent tasks execute in parallel | P2A-006 | TODO |
+| P2A-CI-04 | Lease exclusivity: two workers cannot both hold the same task_run | P2A-005 | TODO |
+| P2A-CI-05 | Lease expiry: reclaimer marks LEASE_LOST after `expires_at` | P2A-007 | TODO |
+| P2A-CI-06 | Worker crash mid-run: attempt state observable, no state loss | P2A-006 | TODO |
+| P2A-CI-07 | Second worker reclaims after crash and completes the task_run | P2A-007 | TODO |
+| P2A-CI-08 | Idempotent duplicate delivery: executor's side effect fires exactly once across retries | P2A-010 | TODO |
+| P2A-CI-09 | Transient failure → retry with backoff → SUCCEEDED | P2A-008 | TODO |
+| P2A-CI-10 | Retry exhaustion → DEAD_LETTER (no further leases) | P2A-008 | TODO |
+| P2A-CI-11 | Cancellation before execution: PENDING/READY → CANCELLED cleanly | P2A-009 | TODO |
+| P2A-CI-12 | Cancellation during execution: running attempt tombstoned, no further transitions | P2A-009 | TODO |
+| P2A-CI-13 | Failed prerequisite (DEAD_LETTER) blocks dependent: dependent → CANCELLED | P2A-009 | TODO |
+| P2A-CI-14 | Successful prerequisite unlocks dependent: BLOCKED → READY | P2A-004 | TODO |
+| P2A-CI-15 | Event chain remains ordered per aggregate (previousEventId chain unbroken) | P2A-011 | TODO |
+| P2A-CI-16 | RLS prevents cross-org mission_run access (positive + denial) | P2A-002 | TODO |
+| P2A-CI-17 | Worker cannot claim another tenant's task_run illegally | P2A-005 | TODO |
+| P2A-CI-18 | Process restart with unfinished mission_run: state fully recovered from DB | P2A-006 | TODO |
+| P2A-CI-19 | Recovery replays events for a resumed mission_run without duplicating effects | P2A-010 | TODO |
+| P2A-CI-20 | Complete mission acceptance test (kill Worker A after leasing `compile-a`, Worker B reclaims, DAG completes, `publish` runs exactly once, evidence chain intact) | ALL above | TODO |
+
+## Phase 2B — Executors (deterministic first)
+
+| ID | Item | Component | Priority | Deps | Status |
+|----|------|-----------|----------|------|--------|
+| P2B-001 | Executor SDK: `defineExecutor()`, contract, evidence emit helpers | packages/executor-sdk | P0 | P2A-014 | TODO |
+| P2B-002 | Deterministic executors: shell, file-write, http-fetch (with idempotency) | packages/executors-basic | P0 | P2B-001 | TODO |
+| P2B-003 | Worker capability matching (worker_class filter in scheduler) | services/worker-runtime | P1 | P2B-001 | TODO |
+
+## Phase 3 — GOD Brain (moved from Phase 2)
+
+| ID | Item | Component | Priority | Deps | Status |
+|----|------|-----------|----------|------|--------|
+| P3-BRAIN-001 | Intent compiler | services/god-brain | P0 | P2A + P2B | TODO |
+| P3-BRAIN-002 | Specification generator | services/god-brain | P0 | P3-BRAIN-001 | TODO |
+| P3-BRAIN-003 | Planner / decomposer (emits a task DAG the runtime executes) | services/god-brain | P0 | P3-BRAIN-002 | TODO |
+| P3-BRAIN-004 | Reflection engine writes to GOD Memory | services/memory-service | P1 | P3-BRAIN-003 | TODO |
 
 ---
 

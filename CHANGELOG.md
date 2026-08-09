@@ -6,6 +6,50 @@ semantic versioning once it reaches `0.1.0`.
 
 ## [Unreleased]
 
+### Phase 2A opened — durable mission runtime foundations
+
+Not a release. Preparatory work for the runtime kernel that ADR-0007
+freezes:
+
+- **ADR-0007** — durable mission runtime. Freezes the mission and task
+  state vocabularies, the at-least-once + idempotent-effects contract,
+  Postgres-first scheduling via `FOR UPDATE SKIP LOCKED`, the
+  definition-vs-run invariant, and the separation between
+  `task_run.status = SUCCEEDED` (executor honored its contract) and
+  P99 verification (evidence consumer, decides whether the mission
+  is verified).
+- **Migration `0004_mission_runtime.sql`** — seven new tables:
+  `mission_runs`, `task_runs`, `task_attempts`, `task_leases`,
+  `task_results`, `evidence`, `idempotency_keys`. Every table under
+  RLS + FORCE with the same `is_member_of`/`has_org_role` policies as
+  Phase 1; grants extended to the `god_app` role. `UNIQUE (task_run_id)`
+  on `task_leases` makes "at most one active lease per task_run" a
+  database invariant, not an application-layer hope. `UNIQUE (task_attempt_id)`
+  on `task_results` and on `idempotency_keys.key` guard against duplicate
+  writes from partitioned workers.
+- **Drizzle schema `packages/db/src/schema/runtime.ts`** matching the
+  migration, plus new prefixed-ULID constructors (`mrn_`, `trn_`,
+  `att_`, `lse_`, `res_`, `evd_`).
+- **BUILD-TRACKER** — new **Phase 2A** section with 14 implementation
+  rows and a **20-scenario CI gate** (lease exclusivity, lease expiry,
+  worker crash + reclaim, idempotent duplicate delivery, retry
+  exhaustion → DEAD_LETTER, cross-org denial for mission_runs, process
+  restart recovery, and the kill-worker acceptance test).
+
+Local verification:
+- All three migrations apply cleanly on an empty Postgres (17 tables).
+- Full workspace typecheck green.
+- Phase 1 integration suite (19 tests) still passes with migration 0004
+  applied — RLS on the new tables composes with existing policies.
+
+**Not yet built and honestly listed as TODO in the tracker:** the
+runtime code itself (projector, DAG resolver, scheduler, worker loop,
+reclaimer, retry policy, cancellation, idempotency broker), the runtime
+domain events, the mission APIs, the mission-run dashboard, the
+deterministic test-executor package, and the 20 CI scenarios. Those
+are the actual Phase 2A work — they'll land as `P2A-003` through
+`P2A-014` and `P2A-CI-01` through `P2A-CI-20`.
+
 ### v0.1.0-rc1 — Phase 1 minus OAuth
 
 CI green on `a89c0d3` across all three jobs (node typecheck+build,
