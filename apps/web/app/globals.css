@@ -1,0 +1,113 @@
+:root {
+  color-scheme: dark;
+  --bg: #05060a;
+  --bg-elevated: #0b0d15;
+  --border: #1a1d2a;
+  --text: #e6e8ef;
+  --text-muted: #8a90a5;
+  --accent-cyan: #22d3ee;
+  --accent-violet: #a78bfa;
+  --accent-green: #34d399;
+  --accent-amber: #fbbf24;
+  --accent-red: #f87171;
+  --focus: #67e8f9;
+  --radius: 8px;
+  --font: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+  --mono: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono",
+    monospace;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 16px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+}
+a { color: var(--accent-cyan); text-decoration: none; }
+a:hover { text-decoration: underline; }
+a:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; border-radius: 4px; }
+code, pre { font-family: var(--mono); font-size: 0.92em; }
+pre { background: var(--bg-elevated); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem; overflow-x: auto; }
+hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
+
+.container { max-width: 1080px; margin: 0 auto; padding: 2rem 1.5rem; }
+
+.nav {
+  border-bottom: 1px solid var(--border);
+  background: rgba(5,6,10,0.85);
+  backdrop-filter: blur(8px);
+  position: sticky; top: 0; z-index: 10;
+}
+.nav-inner {
+  max-width: 1080px; margin: 0 auto; padding: 0.9rem 1.5rem;
+  display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+}
+.brand { font-weight: 700; letter-spacing: 0.02em; color: var(--text); }
+.brand .brand-sub { color: var(--text-muted); font-weight: 400; margin-left: 0.5rem; }
+.nav-links { display: flex; gap: 1.25rem; font-size: 0.95rem; }
+.nav-links a { color: var(--text-muted); }
+.nav-links a:hover { color: var(--text); text-decoration: none; }
+
+.hero { padding: 4rem 0 3rem; }
+.hero h1 { font-size: clamp(2rem, 5vw, 3.25rem); line-height: 1.1; margin: 0 0 1rem; }
+.hero p.lede { font-size: 1.15rem; color: var(--text-muted); max-width: 60ch; margin: 0 0 2rem; }
+.chain {
+  font-family: var(--mono); font-size: 0.9rem; color: var(--text-muted);
+  letter-spacing: 0.05em;
+}
+.chain b { color: var(--text); font-weight: 600; }
+
+.cta-row { display: flex; gap: 0.75rem; flex-wrap: wrap; margin-top: 1.5rem; }
+.btn {
+  display: inline-flex; align-items: center; gap: 0.5rem;
+  padding: 0.65rem 1.1rem; border-radius: var(--radius);
+  border: 1px solid var(--border); background: var(--bg-elevated);
+  color: var(--text); font-weight: 500;
+  transition: border-color 120ms ease, background 120ms ease;
+}
+.btn:hover { border-color: var(--accent-cyan); text-decoration: none; }
+.btn-primary { background: var(--accent-cyan); color: #041016; border-color: transparent; }
+.btn-primary:hover { background: #67e8f9; border-color: transparent; }
+
+.section { padding: 2rem 0; }
+.section h2 { font-size: 1.5rem; margin: 0 0 1rem; }
+
+.grid {
+  display: grid; gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+}
+.card {
+  border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 1.25rem; background: var(--bg-elevated);
+}
+.card h3 { margin: 0 0 0.5rem; font-size: 1.05rem; }
+.card p { margin: 0; color: var(--text-muted); font-size: 0.95rem; }
+.card .tag {
+  display: inline-block; font-size: 0.72rem; letter-spacing: 0.05em;
+  text-transform: uppercase; padding: 0.15rem 0.45rem; border-radius: 4px;
+  margin-top: 0.75rem;
+}
+.tag-todo { background: #241a09; color: var(--accent-amber); border: 1px solid #3d2c11; }
+.tag-progress { background: #08201f; color: var(--accent-cyan); border: 1px solid #0e3335; }
+.tag-verified { background: #082017; color: var(--accent-green); border: 1px solid #0e3327; }
+
+.status-banner {
+  border: 1px solid #3d2c11; background: #1a1204; color: #fde68a;
+  padding: 0.9rem 1.1rem; border-radius: var(--radius);
+  font-size: 0.95rem;
+}
+.status-banner strong { color: var(--accent-amber); }
+
+.footer {
+  border-top: 1px solid var(--border);
+  color: var(--text-muted); font-size: 0.9rem;
+  padding: 2rem 0 3rem;
+}
+.footer-inner { max-width: 1080px; margin: 0 auto; padding: 0 1.5rem;
+  display: flex; gap: 1rem; flex-wrap: wrap; justify-content: space-between; }
