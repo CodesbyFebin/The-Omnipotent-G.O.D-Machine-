@@ -73,7 +73,15 @@ retry (moving back to `RETRY_WAIT` → `READY`) or promote to `DEAD_LETTER`.
 - **Transactional state transition + event append.** Every state change
   writes the row update AND appends the corresponding `DomainEvent` to
   `audit_events` in the same transaction, via the `withAuthenticatedTx`
-  + `appendEvent` pattern established in Phase 1.
+  + `appendEvent` pattern established in Phase 1. **The event append
+  chains per aggregate** (`org_id`, `aggregate_kind`, `aggregate_id`) —
+  not per mission-definition or task-definition. Two `mission_run`s of
+  the same mission definition, and two `task_run`s of the same task
+  definition, each get their own independent event chains. Aggregate
+  kinds recognized by the runtime: `mission`, `task` (definitions);
+  `mission_run`, `task_run`, `task_attempt`, `task_lease` (executions);
+  `tool_run`, `model_run`, `sandbox`, `deployment`, `approval`, `p99`
+  (other domains).
 - **Worker leases with expiry.** A worker acquires a lease with a fixed
   duration. If it fails to heartbeat within that window, the lease is
   reclaimable by any other worker.
@@ -85,6 +93,41 @@ retry (moving back to `RETRY_WAIT` → `READY`) or promote to `DEAD_LETTER`.
   ended — lives in `task_attempts` (immutable, one row per attempt).
   This keeps the scheduler's hot path indexable on a small table and
   keeps the audit trail on an already-immutable structure.
+- **Transitions use conditional UPDATE, never SELECT-then-UPDATE.**
+  Every runtime state change compiles to a single statement:
+  ```sql
+  UPDATE task_runs
+     SET status = :target,
+         updated_at = now(),
+         <state-specific timestamps>
+   WHERE id = :id
+     AND status = :expected
+  RETURNING *;
+  ```
+  Row-count is authoritative: `0` → transition rejected, `1` → transition
+  applied. A separate SELECT to validate the current state before an
+  UPDATE reopens the race the CAS is designed to eliminate. The same
+  rule applies to `mission_runs`, `task_attempts`, and to lease
+  heartbeat/reclaim (the WHERE clause guards the state we expect the
+  row to be in, whatever that state is).
+- **Rejection is side-effect-free.** A rejected transition MUST leave:
+  the target row unchanged, related `task_attempts` unchanged, the
+  active `task_leases` row (if any) unchanged, AND the `audit_events`
+  chain unchanged. No partial event append. No "tried to transition"
+  breadcrumb. The whole transaction rolls back or nothing does.
+- **Two distinct rejection types with different downstream semantics:**
+  - `IllegalTransition` — the `(from, to)` pair is not in the legal
+    graph (e.g. `SUCCEEDED → LEASED`). Signals a caller bug or a
+    corrupt request. Do not retry.
+  - `ExpectedStateMismatch` — the `(from, to)` pair IS legal, but the
+    conditional UPDATE returned 0 rows because the row's current state
+    is not `:expected` (someone else moved it first). Signals normal
+    concurrency; the scheduler tries the next candidate, the heartbeat
+    aborts cleanly (its lease was reclaimed), the cancellation cascade
+    retries.
+  - `TaskRunNotFound` (and siblings) — separate from `ExpectedStateMismatch`.
+    Determined by a diagnostic lookup ONLY after a failed CAS returned 0
+    rows, never by weakening the CAS itself.
 - **Worker ownership is never inferred from possessing a task ID.**
   A worker holding `task_run_id = X` proves nothing on its own. Claim
   authorization comes from four sources evaluated together:
