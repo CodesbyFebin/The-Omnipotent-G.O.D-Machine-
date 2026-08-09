@@ -6,6 +6,30 @@ semantic versioning once it reaches `0.1.0`.
 
 ## [Unreleased]
 
+### Added — Phase 1 (in progress)
+
+- **ADR-0006:** Drizzle ORM + argon2id + DB-backed opaque sessions.
+- **`packages/db`:** Drizzle schema for users, sessions, orgs, memberships,
+  projects, repositories, missions, tasks, task_dependencies, audit_events.
+  Migration `0001_initial.sql` (hand-written; CI-runnable). Postgres session
+  variables `app.current_user` / `app.current_org` set by
+  `withAuthenticatedTx()` for RLS-ready code paths. Prefixed-ULID ID generator.
+- **`packages/auth`:** argon2id hash/verify, opaque 256-bit session tokens
+  hashed with SHA-256 before storage, sliding `last_seen_at`, `__Host-`-prefixed
+  session cookie with `HttpOnly` + `SameSite=Lax`.
+- **`packages/events`:** `appendEvent(tx, event)` that runs inside the caller's
+  transaction, validates against the Zod `DomainEvent` union, and chains
+  `previousEventId` per aggregate.
+- **Auth API routes:** `POST /api/auth/register` (creates user + first org +
+  OWNER membership + session), `POST /api/auth/login` (constant-time-ish
+  credential check), `POST /api/auth/logout` (revokes session). All three
+  rate-limited by an in-process token bucket (Phase 1 stopgap; Redis in Phase 9).
+- **Auth UI + protected `/app` shell:** `/register`, `/login`, `/app` dashboard
+  showing real memberships from the DB (empty state when none). Layout
+  redirects to `/login` when unauthenticated.
+- **Tracker:** Phase 1 rows updated to reflect real state; row-level security
+  and OAuth broken out as explicit follow-up items.
+
 ### Added — Phase 0 foundations
 
 - Monorepo skeleton (`apps/`, `packages/`, `services/`, `infrastructure/`, `docs/`).
