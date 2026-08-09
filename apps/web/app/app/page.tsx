@@ -1,31 +1,31 @@
-import { eq, getDb, schema } from '@god/db';
-import { getAuthContext } from '@/lib/session';
+import { eq, schema, withUserTx } from '@god/db';
+import { requireUser } from '@/lib/authz';
 
 export const dynamic = 'force-dynamic';
 
 export default async function AppDashboardPage() {
-  const auth = await getAuthContext();
-  // Layout already redirected if unauthenticated; guard again for TS.
-  if (!auth) return null;
+  const auth = await requireUser();
 
-  const db = getDb();
+  const { user, memberships } = await withUserTx(auth.userId, async (tx) => {
+    const [u] = await tx
+      .select({ id: schema.users.id, email: schema.users.email })
+      .from(schema.users)
+      .where(eq(schema.users.id, auth.userId))
+      .limit(1);
 
-  const [user] = await db
-    .select({ id: schema.users.id, email: schema.users.email })
-    .from(schema.users)
-    .where(eq(schema.users.id, auth.userId))
-    .limit(1);
+    const ms = await tx
+      .select({
+        orgId: schema.orgs.id,
+        orgName: schema.orgs.name,
+        orgSlug: schema.orgs.slug,
+        role: schema.memberships.role,
+      })
+      .from(schema.memberships)
+      .innerJoin(schema.orgs, eq(schema.memberships.orgId, schema.orgs.id))
+      .where(eq(schema.memberships.userId, auth.userId));
 
-  const memberships = await db
-    .select({
-      orgId: schema.orgs.id,
-      orgName: schema.orgs.name,
-      orgSlug: schema.orgs.slug,
-      role: schema.memberships.role,
-    })
-    .from(schema.memberships)
-    .innerJoin(schema.orgs, eq(schema.memberships.orgId, schema.orgs.id))
-    .where(eq(schema.memberships.userId, auth.userId));
+    return { user: u, memberships: ms };
+  });
 
   return (
     <section className="hero" style={{ paddingBottom: '2rem' }}>
