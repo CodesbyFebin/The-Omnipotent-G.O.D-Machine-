@@ -1,0 +1,69 @@
+# GOD Machine — local development stack.
+# Not production configuration. Passwords are dev defaults; do not reuse.
+#
+# Usage:
+#   docker compose -f infrastructure/compose/dev.yml up -d
+#   docker compose -f infrastructure/compose/dev.yml down
+#
+# Data persists in named volumes. To reset:
+#   docker compose -f infrastructure/compose/dev.yml down -v
+
+name: god-dev
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: god-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: god
+      POSTGRES_PASSWORD: god
+      POSTGRES_DB: god_dev
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U god -d god_dev']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    container_name: god-redis
+    restart: unless-stopped
+    command: ['redis-server', '--appendonly', 'yes']
+    ports:
+      - '6379:6379'
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  minio:
+    image: minio/minio:latest
+    container_name: god-minio
+    restart: unless-stopped
+    command: server /data --console-address ':9001'
+    environment:
+      MINIO_ROOT_USER: godminio
+      MINIO_ROOT_PASSWORD: godminiosecret
+    ports:
+      - '9000:9000'
+      - '9001:9001'
+    volumes:
+      - minio-data:/data
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:9000/minio/health/live']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  postgres-data:
+  redis-data:
+  minio-data:

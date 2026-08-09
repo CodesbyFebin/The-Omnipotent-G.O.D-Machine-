@@ -1,0 +1,69 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  node:
+    name: Node — typecheck + build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.12.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        run: pnpm -r --if-present typecheck
+
+      - name: Build
+        run: pnpm -r --if-present build
+
+  docs:
+    name: Docs — links and structure
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Assert required Phase 0 docs exist
+        run: |
+          set -euo pipefail
+          for f in \
+            README.md \
+            LICENSE \
+            SECURITY.md \
+            CONTRIBUTING.md \
+            CHANGELOG.md \
+            docs/GOD-MACHINE-ARCHITECTURE.md \
+            docs/BUILD-TRACKER.md \
+            docs/THREAT-MODEL.md \
+            docs/adr/0001-monorepo-and-language.md \
+            docs/adr/0002-model-router-abstraction.md \
+            docs/adr/0003-god-claw-execution-boundary.md \
+            docs/adr/0004-storage-postgres-pgvector.md \
+            docs/adr/0005-mission-and-event-model.md
+          do
+            if [ ! -f "$f" ]; then
+              echo "::error file=$f::required Phase 0 document missing"
+              exit 1
+            fi
+          done
