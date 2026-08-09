@@ -5,11 +5,15 @@ import {
   DeploymentId,
   EventId,
   MissionId,
+  MissionRunId,
   ModelRunId,
   OrgId,
   P99ReportId,
   SandboxId,
+  TaskAttemptId,
   TaskId,
+  TaskLeaseId,
+  TaskRunId,
   ToolRunId,
   UserId,
 } from './ids';
@@ -259,6 +263,157 @@ export const ApprovalExpired = EventBase.extend({
   payload: z.object({ approvalId: ApprovalId }),
 });
 
+// ============================================================
+// Mission runtime (Phase 2A) — minimal vocabulary
+// ============================================================
+// Enough for the state-transition kernel (P2A-010) to append its
+// transitions. Broader vocabulary + chain-integrity coverage stays P2A-011.
+// See ADR-0007 for the state graphs these events must correspond to.
+
+const missionRunEvent = <T extends z.ZodTypeAny>(type: string, payload: T) =>
+  EventBase.extend({
+    type: z.literal(type),
+    missionRunId: MissionRunId,
+    missionId: MissionId,
+    payload,
+  });
+
+const taskRunEvent = <T extends z.ZodTypeAny>(type: string, payload: T) =>
+  EventBase.extend({
+    type: z.literal(type),
+    taskRunId: TaskRunId,
+    missionRunId: MissionRunId,
+    taskId: TaskId,
+    payload,
+  });
+
+const taskAttemptEvent = <T extends z.ZodTypeAny>(type: string, payload: T) =>
+  EventBase.extend({
+    type: z.literal(type),
+    taskAttemptId: TaskAttemptId,
+    taskRunId: TaskRunId,
+    payload,
+  });
+
+const taskLeaseEvent = <T extends z.ZodTypeAny>(type: string, payload: T) =>
+  EventBase.extend({
+    type: z.literal(type),
+    taskLeaseId: TaskLeaseId,
+    taskRunId: TaskRunId,
+    payload,
+  });
+
+// ---------- mission_run.* ----------
+export const MissionRunCreated = missionRunEvent(
+  'mission_run.created',
+  z.object({ runNumber: z.number().int().positive() }),
+);
+export const MissionRunQueued = missionRunEvent('mission_run.queued', z.object({}));
+export const MissionRunStarted = missionRunEvent('mission_run.started', z.object({}));
+export const MissionRunWaiting = missionRunEvent(
+  'mission_run.waiting',
+  z.object({ reason: z.string() }),
+);
+export const MissionRunCompleted = missionRunEvent('mission_run.completed', z.object({}));
+export const MissionRunFailed = missionRunEvent(
+  'mission_run.failed',
+  z.object({ reason: z.string() }),
+);
+export const MissionRunCancelled = missionRunEvent(
+  'mission_run.cancelled',
+  z.object({ reason: z.string() }),
+);
+
+// ---------- task_run.* ----------
+// State transitions on task_runs. Emitted from transitionTaskRun() inside
+// the CAS'd transaction (ADR-0007 §Execution guarantees).
+export const TaskRunCreated = taskRunEvent('task_run.created', z.object({}));
+export const TaskRunBlocked = taskRunEvent(
+  'task_run.blocked',
+  z.object({ blockingTaskRunIds: z.array(TaskRunId) }),
+);
+export const TaskRunReady = taskRunEvent('task_run.ready', z.object({}));
+export const TaskRunLeased = taskRunEvent(
+  'task_run.leased',
+  z.object({ taskLeaseId: TaskLeaseId, taskAttemptId: TaskAttemptId }),
+);
+export const TaskRunRunning = taskRunEvent(
+  'task_run.running',
+  z.object({ taskAttemptId: TaskAttemptId }),
+);
+export const TaskRunRetryWait = taskRunEvent(
+  'task_run.retry_wait',
+  z.object({
+    attempt: z.number().int().positive(),
+    retryWaitUntil: IsoDateTime,
+    reason: z.string(),
+  }),
+);
+export const TaskRunSucceeded = taskRunEvent(
+  'task_run.succeeded',
+  z.object({ taskAttemptId: TaskAttemptId }),
+);
+export const TaskRunFailed = taskRunEvent(
+  'task_run.failed',
+  z.object({ taskAttemptId: TaskAttemptId, reason: z.string() }),
+);
+export const TaskRunCancelled = taskRunEvent(
+  'task_run.cancelled',
+  z.object({ reason: z.string() }),
+);
+export const TaskRunDeadLettered = taskRunEvent(
+  'task_run.dead_lettered',
+  z.object({ finalAttempt: z.number().int().positive(), reason: z.string() }),
+);
+
+// ---------- task_attempt.* ----------
+export const TaskAttemptStarted = taskAttemptEvent(
+  'task_attempt.started',
+  z.object({ workerId: z.string(), attemptNumber: z.number().int().positive() }),
+);
+export const TaskAttemptSucceeded = taskAttemptEvent(
+  'task_attempt.succeeded',
+  z.object({ resultId: z.string() }),
+);
+export const TaskAttemptFailed = taskAttemptEvent(
+  'task_attempt.failed',
+  z.object({ reason: z.string() }),
+);
+export const TaskAttemptCrashed = taskAttemptEvent(
+  'task_attempt.crashed',
+  z.object({ detectedBy: z.enum(['reclaimer', 'worker_self_report']) }),
+);
+export const TaskAttemptLeaseLost = taskAttemptEvent(
+  'task_attempt.lease_lost',
+  z.object({}),
+);
+export const TaskAttemptCancelled = taskAttemptEvent(
+  'task_attempt.cancelled',
+  z.object({ reason: z.string() }),
+);
+
+// ---------- task_lease.* ----------
+export const TaskLeaseAcquired = taskLeaseEvent(
+  'task_lease.acquired',
+  z.object({
+    workerId: z.string(),
+    taskAttemptId: TaskAttemptId,
+    expiresAt: IsoDateTime,
+  }),
+);
+export const TaskLeaseHeartbeat = taskLeaseEvent(
+  'task_lease.heartbeat',
+  z.object({ workerId: z.string(), expiresAt: IsoDateTime }),
+);
+export const TaskLeaseExpired = taskLeaseEvent(
+  'task_lease.expired',
+  z.object({ reclaimedBy: z.string().optional() }),
+);
+export const TaskLeaseReleased = taskLeaseEvent(
+  'task_lease.released',
+  z.object({ workerId: z.string() }),
+);
+
 // ---------- discriminated union ----------
 export const DomainEvent = z.discriminatedUnion('type', [
   MissionCreated,
@@ -300,6 +455,34 @@ export const DomainEvent = z.discriminatedUnion('type', [
   ApprovalGranted,
   ApprovalDenied,
   ApprovalExpired,
+  // Mission runtime (Phase 2A)
+  MissionRunCreated,
+  MissionRunQueued,
+  MissionRunStarted,
+  MissionRunWaiting,
+  MissionRunCompleted,
+  MissionRunFailed,
+  MissionRunCancelled,
+  TaskRunCreated,
+  TaskRunBlocked,
+  TaskRunReady,
+  TaskRunLeased,
+  TaskRunRunning,
+  TaskRunRetryWait,
+  TaskRunSucceeded,
+  TaskRunFailed,
+  TaskRunCancelled,
+  TaskRunDeadLettered,
+  TaskAttemptStarted,
+  TaskAttemptSucceeded,
+  TaskAttemptFailed,
+  TaskAttemptCrashed,
+  TaskAttemptLeaseLost,
+  TaskAttemptCancelled,
+  TaskLeaseAcquired,
+  TaskLeaseHeartbeat,
+  TaskLeaseExpired,
+  TaskLeaseReleased,
 ]);
 export type DomainEvent = z.infer<typeof DomainEvent>;
 

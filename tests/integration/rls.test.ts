@@ -237,12 +237,17 @@ describe('RLS — users self-visibility only', () => {
 describe('RLS — audit_events append-only enforcement', () => {
   it('rejects UPDATE and DELETE on audit_events', async () => {
     // Insert an event via the bootstrap tx (registration path).
+    // aggregate_kind + aggregate_id are the canonical chain scope from
+    // migration 0005; this test bypasses appendEvent so it must populate
+    // them explicitly.
     await withBootstrapTx((tx) =>
       tx.insert(schema.auditEvents).values({
         id: 'evt_00000000000000000000000TEST',
         orgId: fx.orgs.a,
         type: 'test.event',
         schemaVersion: 1,
+        aggregateKind: 'org',
+        aggregateId: fx.orgs.a,
         event: { fake: true } as unknown as never,
         occurredAt: new Date(),
       }),
