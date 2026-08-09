@@ -53,9 +53,13 @@ export const newMissionId = () => prefixId('msn');
 export const newTaskId = () => prefixId('tsk');
 export const newEventId = () => prefixId('evt');
 
-// Phase 2A: mission runtime
-export const newMissionRunId = () => prefixId('mrn');
-export const newTaskRunId = () => prefixId('trn');
+// Phase 2A: mission runtime.
+// Prefixes deliberately DO NOT collide with ToolRunId ('trn') or ModelRunId
+// ('mrn'), which are separate concepts (tool invocation record, LLM call
+// record). See packages/schemas/src/ids.ts for the branded Zod types
+// this pairs with, and ADR-0007 for context.
+export const newMissionRunId = () => prefixId('msr');
+export const newTaskRunId = () => prefixId('tsr');
 export const newTaskAttemptId = () => prefixId('att');
 export const newTaskLeaseId = () => prefixId('lse');
 export const newTaskResultId = () => prefixId('res');
