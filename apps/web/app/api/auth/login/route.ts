@@ -9,7 +9,7 @@ import {
   serializeSessionCookie,
   verifyPassword,
 } from '@god/auth';
-import { eq, getDb, schema } from '@god/db';
+import { eq, schema, withBootstrapTx } from '@god/db';
 import { isProduction } from '@/lib/env';
 import { clientKey, rateLimit } from '@/lib/rate-limit';
 
@@ -35,14 +35,17 @@ export async function POST(request: Request) {
   }
 
   const normalizedEmail = parsed.email.trim().toLowerCase();
-  const rows = await getDb()
-    .select({
-      id: schema.users.id,
-      passwordHash: schema.users.passwordHash,
-    })
-    .from(schema.users)
-    .where(eq(schema.users.email, normalizedEmail))
-    .limit(1);
+  // Bootstrap tx: no session context exists yet, and users has RLS on.
+  const rows = await withBootstrapTx((tx) =>
+    tx
+      .select({
+        id: schema.users.id,
+        passwordHash: schema.users.passwordHash,
+      })
+      .from(schema.users)
+      .where(eq(schema.users.email, normalizedEmail))
+      .limit(1),
+  );
 
   const user = rows[0];
   // Constant-time-ish: always verify against a hash so timing doesn't leak

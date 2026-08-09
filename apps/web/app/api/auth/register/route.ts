@@ -10,12 +10,11 @@ import {
 } from '@god/auth';
 import {
   eq,
-  getDb,
   newMembershipId,
   newOrgId,
   newUserId,
   schema,
-  withAnonymousTx,
+  withBootstrapTx,
 } from '@god/db';
 import { isProduction } from '@/lib/env';
 import { clientKey, rateLimit } from '@/lib/rate-limit';
@@ -46,31 +45,24 @@ export async function POST(request: Request) {
   }
 
   const normalizedEmail = parsed.email.trim().toLowerCase();
-
-  // Enumeration-safe check: same latency whether email exists or not.
-  // We deliberately do NOT tell the client "email taken" — the login flow
-  // will reveal ambiguity in the same generic way.
-  const existing = await getDb()
-    .select({ id: schema.users.id })
-    .from(schema.users)
-    .where(eq(schema.users.email, normalizedEmail))
-    .limit(1);
-  if (existing[0]) {
-    // Waste some time so timing doesn't leak account existence.
-    await hashPassword(parsed.password);
-    return NextResponse.json(
-      { error: 'registration_failed' },
-      { status: 400 },
-    );
-  }
-
   const passwordHash = await hashPassword(parsed.password);
   const userId = newUserId();
   const orgId = newOrgId();
   const membershipId = newMembershipId();
   const orgSlug = slugify(parsed.orgName) + '-' + userId.slice(4, 10).toLowerCase();
 
-  const { token, expiresAt } = await withAnonymousTx(async (tx) => {
+  // Bootstrap tx: registration reads and writes tables the caller can't yet
+  // satisfy RLS for (no session context exists). All operations run under
+  // RLS bypass; the app is trusted to enforce validation.
+  const bootstrapResult = await withBootstrapTx(async (tx) => {
+    const existing = await tx
+      .select({ id: schema.users.id })
+      .from(schema.users)
+      .where(eq(schema.users.email, normalizedEmail))
+      .limit(1);
+    if (existing[0]) {
+      return { ok: false as const };
+    }
     await tx.insert(schema.users).values({
       id: userId,
       email: normalizedEmail,
@@ -93,8 +85,17 @@ export async function POST(request: Request) {
       ipAddress: (request.headers.get('x-forwarded-for') ?? '').split(',')[0]?.trim() || null,
       tx,
     });
-    return session;
+    return { ok: true as const, session };
   });
+
+  if (!bootstrapResult.ok) {
+    return NextResponse.json(
+      { error: 'registration_failed' },
+      { status: 400 },
+    );
+  }
+
+  const { token, expiresAt } = bootstrapResult.session;
 
   const secure = isProduction();
   const cookie = serializeSessionCookie(token, {
