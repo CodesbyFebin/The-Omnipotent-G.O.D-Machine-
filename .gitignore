@@ -1,0 +1,45 @@
+# dependencies
+node_modules/
+.pnpm-store/
+
+# build output
+dist/
+build/
+out/
+.next/
+.turbo/
+target/
+*.tsbuildinfo
+
+# environment
+.env
+.env.local
+.env.*.local
+
+# logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# editor / OS
+.DS_Store
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json.example
+*.swp
+
+# test / coverage
+coverage/
+.nyc_output/
+
+# rust
+Cargo.lock
+!apps/*/Cargo.lock
+!services/*/Cargo.lock
+
+# local dev data
+data/
+postgres-data/
+redis-data/
+minio-data/
