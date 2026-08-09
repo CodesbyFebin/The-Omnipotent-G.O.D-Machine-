@@ -26,11 +26,19 @@ export const auditEvents = pgTable(
       .references(() => orgs.id, { onDelete: 'cascade' }),
     type: text('type').notNull(),
     schemaVersion: integer('schema_version').notNull().default(1),
-    /** Populated for events targeting a mission aggregate. */
+    /**
+     * Canonical chain scope (added in migration 0005).
+     * `(orgId, aggregateKind, aggregateId)` is what appendEvent chains on.
+     * Kinds: mission, task, mission_run, task_run, task_attempt, task_lease,
+     * tool_run, model_run, sandbox, deployment, approval, p99, org.
+     */
+    aggregateKind: text('aggregate_kind').notNull(),
+    aggregateId: text('aggregate_id').notNull(),
+    /** Denormalized filter column. Populated when the event pertains to a mission definition. */
     missionId: text('mission_id'),
-    /** Populated for events targeting a task aggregate. */
+    /** Denormalized filter column. Populated when the event pertains to a task definition. */
     taskId: text('task_id'),
-    /** Previous event in the aggregate's chain, or null for the first event. */
+    /** Previous event in this aggregate's chain, or null for the first event. */
     previousEventId: text('previous_event_id'),
     /**
      * Full typed `DomainEvent` payload. See packages/schemas/src/events.ts.
@@ -47,6 +55,12 @@ export const auditEvents = pgTable(
     taskIdx: index('audit_events_task_id_idx').on(t.taskId),
     typeIdx: index('audit_events_type_idx').on(t.type),
     occurredIdx: index('audit_events_occurred_at_idx').on(t.occurredAt),
+    aggregateChainIdx: index('audit_events_aggregate_chain_idx').on(
+      t.orgId,
+      t.aggregateKind,
+      t.aggregateId,
+      t.occurredAt,
+    ),
   }),
 );
 

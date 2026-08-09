@@ -22,6 +22,13 @@
       "when": 1723200120000,
       "tag": "0004_mission_runtime",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1723200180000,
+      "tag": "0005_audit_aggregate",
+      "breakpoints": true
     }
   ]
 }
