@@ -24,8 +24,12 @@ export async function withAuthenticatedTx<T>(
 ): Promise<T> {
   const db = getDb();
   return db.transaction(async (tx) => {
-    await tx.execute(sql`SET LOCAL app.current_user = ${ctx.userId}`);
-    await tx.execute(sql`SET LOCAL app.current_org = ${ctx.orgId}`);
+    // `SET LOCAL name = $1` is not valid Postgres — SET requires a literal.
+    // `set_config(name, value, is_local=true)` is the equivalent that
+    // accepts parameters, keeping us safe against injection.
+    await tx.execute(
+      sql`SELECT set_config('app.current_user', ${ctx.userId}, true), set_config('app.current_org', ${ctx.orgId}, true)`,
+    );
     return fn(tx);
   });
 }
@@ -43,7 +47,9 @@ export async function withUserTx<T>(
 ): Promise<T> {
   const db = getDb();
   return db.transaction(async (tx) => {
-    await tx.execute(sql`SET LOCAL app.current_user = ${userId}`);
+    await tx.execute(
+      sql`SELECT set_config('app.current_user', ${userId}, true)`,
+    );
     return fn(tx);
   });
 }
@@ -77,6 +83,8 @@ export async function withBootstrapTx<T>(
   fn: (tx: Transaction) => Promise<T>,
 ): Promise<T> {
   return getDb().transaction(async (tx) => {
+    // `row_security` accepts a literal (not a parameter). No user input
+    // reaches this string, so a plain SET LOCAL is safe.
     await tx.execute(sql`SET LOCAL row_security = off`);
     return fn(tx);
   });
