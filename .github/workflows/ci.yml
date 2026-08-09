@@ -27,10 +27,13 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: 'pnpm'
 
+      # No `cache: pnpm` yet — that requires a committed pnpm-lock.yaml, which
+      # will land the first time `pnpm install` is run locally. Once the lockfile
+      # exists, restore `cache: 'pnpm'` above and swap `install` for
+      # `install --frozen-lockfile` below.
       - name: Install
-        run: pnpm install --frozen-lockfile
+        run: pnpm install --no-frozen-lockfile
 
       - name: Typecheck
         run: pnpm -r --if-present typecheck
