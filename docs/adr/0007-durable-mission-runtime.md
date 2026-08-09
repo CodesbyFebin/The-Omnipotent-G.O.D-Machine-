@@ -77,6 +77,29 @@ retry (moving back to `RETRY_WAIT` → `READY`) or promote to `DEAD_LETTER`.
 - **Worker leases with expiry.** A worker acquires a lease with a fixed
   duration. If it fails to heartbeat within that window, the lease is
   reclaimable by any other worker.
+- **Lease table is current-state, not history (Model A).** `task_leases`
+  holds at most one row per task_run — enforced by
+  `UNIQUE(task_run_id)`. A lease is inserted on acquisition, updated
+  on heartbeat, and DELETEd on completion/failure/expiry. Historical
+  lease information — who leased, when, for which attempt, how it
+  ended — lives in `task_attempts` (immutable, one row per attempt).
+  This keeps the scheduler's hot path indexable on a small table and
+  keeps the audit trail on an already-immutable structure.
+- **Worker ownership is never inferred from possessing a task ID.**
+  A worker holding `task_run_id = X` proves nothing on its own. Claim
+  authorization comes from four sources evaluated together:
+    1. Tenant context (the worker's org membership, set as
+       `app.current_org` in the tx).
+    2. Task eligibility (worker_class matches; task_run status is
+       `READY` or `RETRY_WAIT` with `retry_wait_until <= now()`).
+    3. Successful database lease acquisition (the `UNIQUE(task_run_id)`
+       insert into `task_leases` — a race lost here means another
+       worker owns it).
+    4. Policy (the worker's service-account membership + role, evaluated
+       through the same RLS + `god_app` demotion the app uses).
+  This becomes load-bearing once GOD Swarm and EdgeNodes exist —
+  distributed workers must not be able to escalate by fabricating or
+  guessing task IDs.
 - **Heartbeat-based lease extension.** Running workers push
   `heartbeat_at` forward periodically. The extension only succeeds if
   the lease is still valid (defence against a partitioned worker
@@ -324,6 +347,11 @@ independently of the mission kernel.
 - **A separate queue-per-tenant.** Rejected. Fair queueing across
   tenants belongs in scheduler policy over one queue, not in
   operational surface area.
+- **Historical `task_leases` (multiple rows per task_run).**
+  Rejected. Would require a partial UNIQUE constraint or an
+  application-layer "active lease" invariant, and duplicates
+  information `task_attempts` already carries authoritatively. Model A
+  (current-state only) is what §Execution guarantees commits to.
 
 ## 9. Open questions this ADR does not resolve
 

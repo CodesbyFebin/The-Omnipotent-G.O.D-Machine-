@@ -90,59 +90,79 @@ re-sequenced when each phase actually starts. What is frozen now is
 **this order: 2A kernel → 2B deterministic executors → GOD Brain →
 GOD Router → GOD Claw → GOD Swarm → P99.**
 
+### Foundation (landed)
+
 | ID | Item | Component | Priority | Deps | Status |
 |----|------|-----------|----------|------|--------|
-| P2A-000 | ADR-0007: durable mission runtime (states, guarantees, invariants) | Docs | P0 | P1-005 | VERIFIED |
-| P2A-001 | Migration 0004: mission_runs, task_runs, task_attempts, task_leases, task_results, evidence, idempotency_keys | packages/db | P0 | P2A-000 | REVIEW *(migration applies locally on empty + on top of 0001+0002; RLS + FORCE + policies mirror Phase 1)* |
+| P2A-000 | ADR-0007: durable mission runtime (states, guarantees, invariants, lease Model A, worker ownership rule) | Docs | P0 | P1-005 | VERIFIED |
+| P2A-001 | Migration 0004: mission_runs, task_runs, task_attempts, task_leases, task_results, evidence, idempotency_keys — RLS + FORCE + policies + `god_app` grants | packages/db | P0 | P2A-000 | REVIEW *(applies cleanly on empty + on top of 0001+0002; Phase 1 suite still 19/19 green. Not VERIFIED — runtime integration tests are the only evidence that will unlock that state.)* |
 | P2A-002 | Drizzle schema + typed IDs for runtime tables | packages/db | P0 | P2A-001 | REVIEW |
-| P2A-003 | Mission-run/task-run projector (append event → advance row state in same tx) | packages/runtime | P0 | P2A-002 | TODO |
-| P2A-004 | DAG readiness resolver (BLOCKED → READY when all deps SUCCEEDED) | packages/runtime | P0 | P2A-003 | TODO |
-| P2A-005 | Scheduler: `SELECT … FOR UPDATE SKIP LOCKED` claim, atomic lease + attempt + event | services/worker-runtime | P0 | P2A-004 | TODO |
-| P2A-006 | Worker loop: lease → heartbeat → execute → result + evidence → transition | services/worker-runtime | P0 | P2A-005 | TODO |
-| P2A-007 | Reclaimer: expired-lease sweep → LEASE_LOST + READY | services/worker-runtime | P0 | P2A-006 | TODO |
-| P2A-008 | Retry policy: `RETRY_WAIT` scheduling with exp-backoff+jitter, DLQ at exhaustion | services/worker-runtime | P0 | P2A-006 | TODO |
-| P2A-009 | Cancellation: mission_run cancel → cascade to non-terminal task_runs, tombstone leases | services/worker-runtime | P0 | P2A-006 | TODO |
-| P2A-010 | Idempotency broker: first-writer-wins around any executor side effect | packages/runtime | P0 | P2A-006 | TODO |
-| P2A-011 | Domain events for runtime lifecycle: `mission_run.*`, `task_run.*`, `task_attempt.*`, `lease.*` | packages/schemas + packages/events | P0 | P2A-003 | TODO |
-| P2A-012 | API: `POST /api/missions` (create), `POST /api/missions/:id/runs` (queue), `GET /api/mission-runs/:id`, `POST /api/mission-runs/:id/cancel` | apps/web | P0 | P2A-009 | TODO |
-| P2A-013 | Web: mission-run dashboard + DAG visualization (server components, no fake data) | apps/web | P1 | P2A-012 | TODO |
-| P2A-014 | Deterministic test executor package (`@god/executors-test`) for CI-only workloads | packages/executors-test | P0 | P2A-006 | TODO |
 
-### Phase 2A CI gate — 20 scenarios that must be green
+### Runtime kernel — implementation order (build in this sequence)
 
-Each row is a distinct integration test scenario. `VERIFIED` for P2A
-requires **all 20** on CI with a fresh Postgres per run.
-
-| ID | Scenario | Deps | Status |
-|----|----------|------|--------|
-| P2A-CI-01 | Create mission + DAG persists correctly | P2A-012 | TODO |
-| P2A-CI-02 | Dependency ordering: dependent stays BLOCKED until upstream SUCCEEDED | P2A-004 | TODO |
-| P2A-CI-03 | Independent tasks execute in parallel | P2A-006 | TODO |
-| P2A-CI-04 | Lease exclusivity: two workers cannot both hold the same task_run | P2A-005 | TODO |
-| P2A-CI-05 | Lease expiry: reclaimer marks LEASE_LOST after `expires_at` | P2A-007 | TODO |
-| P2A-CI-06 | Worker crash mid-run: attempt state observable, no state loss | P2A-006 | TODO |
-| P2A-CI-07 | Second worker reclaims after crash and completes the task_run | P2A-007 | TODO |
-| P2A-CI-08 | Idempotent duplicate delivery: executor's side effect fires exactly once across retries | P2A-010 | TODO |
-| P2A-CI-09 | Transient failure → retry with backoff → SUCCEEDED | P2A-008 | TODO |
-| P2A-CI-10 | Retry exhaustion → DEAD_LETTER (no further leases) | P2A-008 | TODO |
-| P2A-CI-11 | Cancellation before execution: PENDING/READY → CANCELLED cleanly | P2A-009 | TODO |
-| P2A-CI-12 | Cancellation during execution: running attempt tombstoned, no further transitions | P2A-009 | TODO |
-| P2A-CI-13 | Failed prerequisite (DEAD_LETTER) blocks dependent: dependent → CANCELLED | P2A-009 | TODO |
-| P2A-CI-14 | Successful prerequisite unlocks dependent: BLOCKED → READY | P2A-004 | TODO |
-| P2A-CI-15 | Event chain remains ordered per aggregate (previousEventId chain unbroken) | P2A-011 | TODO |
-| P2A-CI-16 | RLS prevents cross-org mission_run access (positive + denial) | P2A-002 | TODO |
-| P2A-CI-17 | Worker cannot claim another tenant's task_run illegally | P2A-005 | TODO |
-| P2A-CI-18 | Process restart with unfinished mission_run: state fully recovered from DB | P2A-006 | TODO |
-| P2A-CI-19 | Recovery replays events for a resumed mission_run without duplicating effects | P2A-010 | TODO |
-| P2A-CI-20 | Complete mission acceptance test (kill Worker A after leasing `compile-a`, Worker B reclaims, DAG completes, `publish` runs exactly once, evidence chain intact) | ALL above | TODO |
-
-## Phase 2B — Executors (deterministic first)
+The state-transition kernel is P2A-010, not the worker. The worker (P2A-100)
+is almost last — it should be boring orchestration over already-proven
+primitives, per ADR-0007. Every row below imports its transitions from
+P2A-010; no ORM update on runtime state lives outside `packages/runtime`.
 
 | ID | Item | Component | Priority | Deps | Status |
 |----|------|-----------|----------|------|--------|
-| P2B-001 | Executor SDK: `defineExecutor()`, contract, evidence emit helpers | packages/executor-sdk | P0 | P2A-014 | TODO |
-| P2B-002 | Deterministic executors: shell, file-write, http-fetch (with idempotency) | packages/executors-basic | P0 | P2B-001 | TODO |
-| P2B-003 | Worker capability matching (worker_class filter in scheduler) | services/worker-runtime | P1 | P2B-001 | TODO |
+| P2A-010 | State-transition kernel — one authoritative `transitionTaskRun(tx, id, expected, target, meta)` + siblings for mission_run and task_attempt; owns legal-transition validation, optimistic concurrency, timestamp changes, attempt association, event append, invariant enforcement. Legal task-run graph frozen as code (see ADR-0007 §Task states). | packages/runtime | P0 | P2A-002 | TODO |
+| P2A-011 | Runtime domain events: `mission_run.*`, `task_run.*`, `task_attempt.*`, `task_lease.*` variants added to DomainEvent union in `packages/schemas`; `@god/events` handles the new discriminants | packages/schemas + packages/events | P0 | P2A-010 | TODO |
+| P2A-012 | DAG dependency projector (materializes task_runs from a mission_run + task definitions and their task_dependencies) | packages/runtime | P0 | P2A-010 | TODO |
+| P2A-013 | READY-task resolver (BLOCKED → READY when every dep is SUCCEEDED; dep CANCELLED / DEAD_LETTER → dependent CANCELLED) | packages/runtime | P0 | P2A-012 | TODO |
+| P2A-014 | Atomic task claim: `SELECT … FOR UPDATE SKIP LOCKED` + insert lease + insert attempt + transition READY→LEASED + event, all in one tx | packages/runtime | P0 | P2A-013 | TODO |
+| P2A-015 | Lease heartbeat: guarded UPDATE that fails loud when the lease was revoked or reclaimed | packages/runtime | P0 | P2A-014 | TODO |
+| P2A-016 | Lease reclaimer: sweep `expires_at < now()` → task_attempt=LEASE_LOST + task_run=RETRY_WAIT/READY + event + DELETE lease | packages/runtime | P0 | P2A-015 | TODO |
+| P2A-017 | Retry policy + DLQ: RETRY_WAIT scheduling with exp-backoff + jitter; RETRY_WAIT → READY at deadline; retry-exhaustion → DEAD_LETTER (terminal) | packages/runtime | P0 | P2A-016 | TODO |
+| P2A-018 | Idempotency broker: first-writer-wins around every executor side effect via `idempotency_keys` | packages/runtime | P0 | P2A-010 | TODO |
+| P2A-019 | Cancellation semantics: mission_run cancel cascades to non-terminal task_runs; running attempts tombstoned; heartbeat detects and fails | packages/runtime | P0 | P2A-015 | TODO |
+| P2A-020 | Mission-run status aggregation: derive mission_run.status from its task_runs after every transition | packages/runtime | P0 | P2A-013 | TODO |
+
+### Executors (P2B)
+
+| ID | Item | Component | Priority | Deps | Status |
+|----|------|-----------|----------|------|--------|
+| P2B-000 | Deterministic executor interface: `defineExecutor()`, contract, evidence emit helpers, idempotency-scope helpers | packages/executor-sdk | P0 | P2A-018 | TODO |
+| P2B-001 | Deterministic test executor (`@god/executors-test`) for CI: shell-echo, file-write, sleep, controlled-failure — used by every P2C scenario | packages/executors-test | P0 | P2B-000 | TODO |
+| P2B-002 | Immutable `task_results` + `evidence` write helpers (executor SDK enforces write-once; RLS also enforces) | packages/executor-sdk | P0 | P2B-000 | TODO |
+
+### Worker + API + UI (P2A-100 range — after kernel is proven)
+
+| ID | Item | Component | Priority | Deps | Status |
+|----|------|-----------|----------|------|--------|
+| P2A-100 | Worker loop: claim → heartbeat → execute → result + evidence → transition. Boring orchestration over P2A-010..019. | services/worker-runtime | P0 | P2A-019, P2B-001 | TODO |
+| P2A-101 | Mission APIs: `POST /api/missions`, `POST /api/missions/:id/runs`, `GET /api/mission-runs/:id`, `POST /api/mission-runs/:id/cancel` | apps/web | P0 | P2A-100 | TODO |
+| P2A-102 | Mission-run dashboard + DAG visualization (server components; real DB data only) | apps/web | P1 | P2A-101 | TODO |
+
+### CI gate (P2C) — 20 scenarios; land incrementally alongside kernel commits
+
+Each row is a distinct integration test scenario. **`P2A` moves to VERIFIED
+only when all 20 are green on a fresh Postgres per run.** Land them as
+each primitive lands — don't accumulate untested interactions.
+
+| ID | Scenario | Lands with | Status |
+|----|----------|------------|--------|
+| P2C-001 | Illegal transition rejection (transitionTaskRun rejects e.g. SUCCEEDED → LEASED) | P2A-010 | TODO |
+| P2C-002 | Runtime DomainEvent parses + chains per aggregate | P2A-011 | TODO |
+| P2C-003 | DAG projector produces exactly one task_run per task definition per mission_run | P2A-012 | TODO |
+| P2C-004 | Dependency ordering: dependent stays BLOCKED until upstream SUCCEEDED | P2A-013 | TODO |
+| P2C-005 | Successful prerequisite unlocks dependent: BLOCKED → READY | P2A-013 | TODO |
+| P2C-006 | Concurrent claim exclusivity: two workers, one gets LEASED, the other gets nothing | P2A-014 | TODO |
+| P2C-007 | Lease + heartbeat: heartbeat extends `expires_at`; unrelated worker cannot heartbeat someone else's lease | P2A-015 | TODO |
+| P2C-008 | Lease expiry: reclaimer transitions attempt=LEASE_LOST + task_run→RETRY_WAIT/READY after `expires_at` | P2A-016 | TODO |
+| P2C-009 | Worker crash mid-run: attempt observable; second worker reclaims and completes | P2A-016 | TODO |
+| P2C-010 | Transient failure → RETRY_WAIT with backoff → READY → SUCCEEDED | P2A-017 | TODO |
+| P2C-011 | Retry exhaustion → DEAD_LETTER, terminal, no further leases | P2A-017 | TODO |
+| P2C-012 | Idempotent duplicate delivery: executor side effect fires exactly once across retries | P2A-018 | TODO |
+| P2C-013 | Cancellation before execution: PENDING/READY → CANCELLED cleanly | P2A-019 | TODO |
+| P2C-014 | Cancellation during execution: running attempt tombstoned; no further transitions | P2A-019 | TODO |
+| P2C-015 | Failed prerequisite (DEAD_LETTER) → dependent CANCELLED | P2A-019 | TODO |
+| P2C-016 | Mission-run aggregation: mission_run reaches COMPLETED iff every task_run is terminal-success | P2A-020 | TODO |
+| P2C-017 | Cross-tenant worker isolation: worker from Org A cannot claim Org B's READY task_run (RLS + policy) | P2A-014 | TODO |
+| P2C-018 | Fresh DB → migrate → execute full deterministic DAG → COMPLETED with complete evidence chain | P2A-100 + P2B-001 | TODO |
+| P2C-019 | Process restart with unfinished mission_run: state fully recovered from DB; execution resumes | P2A-100 | TODO |
+| P2C-020 | **Acceptance test.** Kill Worker A after it leases `compile-a`; wait for lease expiry; Worker B reclaims; DAG completes; `publish` runs exactly once; evidence chain intact. Then restart the runtime and prove the same persisted mission still has the correct result. | ALL above | TODO |
 
 ## Phase 3 — GOD Brain (moved from Phase 2)
 
