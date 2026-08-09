@@ -1,11 +1,12 @@
 # The-Omnipotent-G.O.D-Machine-
+<img width="1672" height="941" alt="G O D" src="https://github.com/user-attachments/assets/d48e0bd5-dc88-4e82-bbcf-97c294e735d1" />
+
 
 G.O.D Machine  Open Agentic Development OS  ✨G.O.D✨Open-source AI coding agent and self-hosted Agentic Development OS with autonomous agent swarms, MCP tools, local LLM routing, secure sandboxes, persistent memory, coding IDE, P99 verification, deployment and self-healing workflows.
-<img width="1672" height="941" alt="God Claw" src="https://github.com/user-attachments/assets/82bec0dc-0d61-471e-a18e-911e46b9078b" />
-<img width="1672" height="941" alt="God memory" src="https://github.com/user-attachments/assets/eeecf5f6-7d28-42fe-94e2-eeb98c180a27" />
-<img width="1672" height="941" alt="God router" src="https://github.com/user-attachments/assets/888cf2c4-ff4c-43e9-96b0-764acfb2e818" />
-<img width="1672" height="941" alt="God Swarm" src="https://github.com/user-attachments/assets/6729a155-a82d-46ce-ae15-3fac256e05d8" />
-<img width="1672" height="941" alt="GOD BRAIN" src="https://github.com/user-attachments/assets/a7c77483-56a1-4ef0-87ca-510855cc074c" />
+
+
+<img width="1916" height="821" alt="GOD MAC" src="https://github.com/user-attachments/assets/967c16fc-c561-4cb7-ad40-ed6788685e6f" />
+
 
 ````markdown
 <!--
@@ -249,6 +250,7 @@ attempting unrestricted execution directly.
 ---
 
 ## GOD Mode
+<img width="1672" height="941" alt="God Mode" src="https://github.com/user-attachments/assets/9b81052a-fae1-41da-a220-cbdf5f66d7c5" />
 
 **GOD Mode** is the highest-autonomy operating mode.
 
@@ -276,6 +278,7 @@ visible actions can still require explicit approval.
 
 # GOD Brain
 
+<img width="1672" height="941" alt="GOD BRAIN" src="https://github.com/user-attachments/assets/a7c77483-56a1-4ef0-87ca-510855cc074c" />
 **GOD Brain** is the reasoning, planning and orchestration layer.
 
 ```text
@@ -330,7 +333,7 @@ unstructured loop of model prompts.
 ---
 
 # GOD Swarm
-
+<img width="1672" height="941" alt="God Swarm" src="https://github.com/user-attachments/assets/6729a155-a82d-46ce-ae15-3fac256e05d8" />
 **GOD Swarm** is the multi-agent engineering runtime.
 
 A default engineering swarm can contain specialist roles such as:
@@ -403,8 +406,7 @@ Example:
 ---
 
 # GOD Router
-
-**GOD Router** is the model-intelligence layer.
+<img width="1672" height="941" alt="God router" src="https://github.com/user-attachments/assets/888cf2c4-ff4c-43e9-96b0-764acfb2e818" />**GOD Router** is the model-intelligence layer.
 
 Instead of hardcoding:
 
@@ -513,7 +515,7 @@ failure probability.
 ---
 
 # GOD Memory
-
+<img width="1672" height="941" alt="God memory" src="https://github.com/user-attachments/assets/eeecf5f6-7d28-42fe-94e2-eeb98c180a27" />
 **GOD Memory** provides persistent engineering intelligence.
 
 Recommended hierarchy:
@@ -606,7 +608,7 @@ The objective is:
 ---
 
 # GOD Claw
-
+<img width="1672" height="941" alt="God Claw" src="https://github.com/user-attachments/assets/82bec0dc-0d61-471e-a18e-911e46b9078b" />
 **GOD Claw** is the controlled action and execution authority.
 
 > **Brain thinks. Swarm collaborates. Claw acts.**
