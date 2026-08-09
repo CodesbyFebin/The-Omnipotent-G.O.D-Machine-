@@ -1,13 +1,15 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { eq } from 'drizzle-orm';
+
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 import {
   createSession,
   hashPassword,
   serializeSessionCookie,
   verifyPassword,
 } from '@god/auth';
-import { getDb, schema } from '@god/db';
+import { eq, getDb, schema } from '@god/db';
 import { isProduction } from '@/lib/env';
 import { clientKey, rateLimit } from '@/lib/rate-limit';
 

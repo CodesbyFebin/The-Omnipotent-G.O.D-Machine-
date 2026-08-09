@@ -1,5 +1,4 @@
-import { eq } from 'drizzle-orm';
-import { getDb, schema } from '@god/db';
+import { eq, getDb, schema } from '@god/db';
 import { getAuthContext } from '@/lib/session';
 
 export const dynamic = 'force-dynamic';

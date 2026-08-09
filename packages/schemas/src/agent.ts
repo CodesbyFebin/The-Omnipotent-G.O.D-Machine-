@@ -1,6 +1,6 @@
 import { z } from 'zod';
-import { AgentId, ToolId } from './ids.js';
-import { Budget, RouterMode } from './common.js';
+import { AgentId, ToolId } from './ids';
+import { Budget, RouterMode } from './common';
 
 /**
  * Built-in agent roles. Custom agents are represented as `custom` and carry

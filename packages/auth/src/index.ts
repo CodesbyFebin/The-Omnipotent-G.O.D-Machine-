@@ -1,3 +1,3 @@
-export * from './password.js';
-export * from './session.js';
-export * from './cookie.js';
+export * from './password';
+export * from './session';
+export * from './cookie';

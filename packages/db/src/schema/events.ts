@@ -7,7 +7,7 @@ import {
   timestamp,
 } from 'drizzle-orm/pg-core';
 import type { DomainEvent } from '@god/schemas';
-import { orgs } from './orgs.js';
+import { orgs } from './orgs';
 
 /**
  * Append-only audit log. The mission and task rows are projections of this

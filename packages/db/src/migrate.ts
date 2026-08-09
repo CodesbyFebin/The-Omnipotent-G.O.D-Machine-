@@ -1,5 +1,5 @@
 import { migrate } from 'drizzle-orm/postgres-js/migrator';
-import { getDb, closeDb } from './client.js';
+import { getDb, closeDb } from './client';
 
 async function main() {
   const db = getDb();

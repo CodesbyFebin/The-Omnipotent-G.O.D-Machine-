@@ -5,8 +5,8 @@ import {
   timestamp,
   uniqueIndex,
 } from 'drizzle-orm/pg-core';
-import { roleEnum } from './enums.js';
-import { users } from './users.js';
+import { roleEnum } from './enums';
+import { users } from './users';
 
 export const orgs = pgTable(
   'orgs',

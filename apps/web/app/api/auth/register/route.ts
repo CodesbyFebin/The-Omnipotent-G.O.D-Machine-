@@ -1,12 +1,15 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { eq } from 'drizzle-orm';
+
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 import {
   createSession,
   hashPassword,
   serializeSessionCookie,
 } from '@god/auth';
 import {
+  eq,
   getDb,
   newMembershipId,
   newOrgId,

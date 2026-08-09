@@ -3,6 +3,9 @@ import {
   revokeSession,
   serializeSessionClearCookie,
 } from '@god/auth';
+
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 import { getAuthContext } from '@/lib/session';
 import { isProduction } from '@/lib/env';
 

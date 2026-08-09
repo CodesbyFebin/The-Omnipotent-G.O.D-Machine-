@@ -4,14 +4,14 @@ import {
   OrgId,
   ProjectId,
   UserId,
-} from './ids.js';
+} from './ids';
 import {
   AutonomyLevel,
   Budget,
   IsoDateTime,
   PrivacyClass,
   RiskLevel,
-} from './common.js';
+} from './common';
 
 export const MissionStatus = z.enum([
   'draft',

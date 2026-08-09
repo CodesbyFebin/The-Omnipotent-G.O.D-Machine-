@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm';
-import { getDb, type Database } from './client.js';
+import { getDb, type Database } from './client';
 
 export type Transaction = Parameters<
   Parameters<Database['transaction']>[0]

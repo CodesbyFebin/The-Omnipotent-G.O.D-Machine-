@@ -1,6 +1,6 @@
 import { z } from 'zod';
-import { ToolId } from './ids.js';
-import { Money, RiskCategory, RiskLevel } from './common.js';
+import { ToolId } from './ids';
+import { Money, RiskCategory, RiskLevel } from './common';
 
 /**
  * A Tool descriptor. Every tool passing through GOD Claw carries this

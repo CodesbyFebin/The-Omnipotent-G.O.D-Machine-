@@ -1,6 +1,6 @@
 import { z } from 'zod';
-import { AgentId, MissionId, TaskId } from './ids.js';
-import { IsoDateTime } from './common.js';
+import { AgentId, MissionId, TaskId } from './ids';
+import { IsoDateTime } from './common';
 
 export const TaskStatus = z.enum([
   'pending',

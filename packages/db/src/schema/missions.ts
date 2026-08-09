@@ -11,16 +11,16 @@ import type {
   Budget,
   MissionSpecification,
 } from '@god/schemas';
-import { orgs } from './orgs.js';
-import { projects } from './projects.js';
-import { users } from './users.js';
+import { orgs } from './orgs';
+import { projects } from './projects';
+import { users } from './users';
 import {
   autonomyLevelEnum,
   missionStatusEnum,
   privacyClassEnum,
   riskLevelEnum,
   taskStatusEnum,
-} from './enums.js';
+} from './enums';
 
 export const missions = pgTable(
   'missions',

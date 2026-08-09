@@ -12,8 +12,8 @@ import {
   TaskId,
   ToolRunId,
   UserId,
-} from './ids.js';
-import { IsoDateTime } from './common.js';
+} from './ids';
+import { IsoDateTime } from './common';
 
 /**
  * Typed domain events. Persisted append-only in `audit_events`. The mission /

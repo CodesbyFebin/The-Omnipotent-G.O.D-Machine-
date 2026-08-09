@@ -1,12 +1,16 @@
-import { hash, verify, Algorithm } from '@node-rs/argon2';
+import { hash, verify } from '@node-rs/argon2';
 import { z } from 'zod';
 
 /**
  * argon2id parameters. OWASP 2023 minimum. Increase if hash time on target
  * hardware drops below ~200ms; do NOT decrease without an ADR.
+ *
+ * `algorithm: 2` === Algorithm.Argon2id. The library ships `Algorithm` as
+ * an ambient `const enum`, which cannot be referenced under our TypeScript
+ * `isolatedModules: true` setting — so we use the numeric literal.
  */
 const ARGON2_OPTIONS = {
-  algorithm: Algorithm.Argon2id,
+  algorithm: 2,
   memoryCost: 19_456, // 19 MiB
   timeCost: 2,
   parallelism: 1,
