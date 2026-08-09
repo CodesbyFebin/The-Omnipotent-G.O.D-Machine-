@@ -3,7 +3,8 @@ import type { NextConfig } from 'next';
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
-  transpilePackages: ['@god/schemas'],
+  transpilePackages: ['@god/schemas', '@god/db', '@god/auth', '@god/events'],
+  serverExternalPackages: ['@node-rs/argon2', 'postgres'],
   experimental: {
     typedRoutes: true,
   },
