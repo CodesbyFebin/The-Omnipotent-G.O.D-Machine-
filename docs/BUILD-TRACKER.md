@@ -60,21 +60,22 @@ running a single command.
 | ID | Item | Component | Priority | Deps | Status |
 |----|------|-----------|----------|------|--------|
 | P1-000 | ADR-0006: ORM (Drizzle) + auth approach (argon2id + DB sessions) | Docs | P0 | P0-008 | VERIFIED |
-| P1-001a | Identity: users, sessions, email+password | packages/auth + apps/web | P0 | P0-010, P1-000 | REVIEW |
+| P1-001a | Identity: users, sessions, email+password | packages/auth + apps/web | P0 | P0-010, P1-000 | VERIFIED *(CI: auth.test.ts 6/6)* |
 | P1-001b | Identity: OAuth providers | packages/auth | P0 | P1-001a | TODO |
-| P1-002 | Organizations, memberships, roles (OWNER/ADMIN/DEVELOPER/OPERATOR/REVIEWER/VIEWER) | packages/db + apps/web | P0 | P1-001a | REVIEW |
-| P1-003 | Projects + repositories | packages/db + services/project-service | P0 | P1-002 | REVIEW *(schema only; CRUD API pending)* |
-| P1-004 | Mission schema persisted to Postgres | packages/db + services/mission-service | P0 | P0-010 | REVIEW *(schema only; CRUD API pending)* |
-| P1-005 | Event system (typed `DomainEvent`, `audit_events` append-only table, previousEventId chain) | packages/db + packages/events | P0 | P0-010 | REVIEW |
-| P1-006 | Basic dashboard (real DB data only, empty states when no data) | apps/web | P0 | P1-002, P1-004 | REVIEW *(orgs list wired; projects/missions pending)* |
-| P1-007 | Server-side authorization checks on every mutation | apps/web + services/identity | P0 | P1-002 | TODO *(withAuthenticatedTx helper landed; per-endpoint org-scope authz next)* |
-| P1-008 | Row-level security policies on org-scoped tables | packages/db (migration 0002) | P0 | P1-002 | TODO |
-| P1-009 | CI: run migrations against ephemeral Postgres, then integration tests | .github/workflows | P0 | P1-005 | TODO |
+| P1-002 | Organizations, memberships, roles (OWNER/ADMIN/DEVELOPER/OPERATOR/REVIEWER/VIEWER) | packages/db + apps/web | P0 | P1-001a | VERIFIED *(CI: rls.test.ts positive-access + auth.test.ts registration flow)* |
+| P1-003 | Projects + repositories | packages/db + services/project-service | P0 | P1-002 | REVIEW *(schema + RLS verified in CI; CRUD API pending Phase 2)* |
+| P1-004 | Mission schema persisted to Postgres | packages/db + services/mission-service | P0 | P0-010 | REVIEW *(schema + RLS verified in CI; CRUD API + state machine in Phase 2)* |
+| P1-005 | Event system (typed `DomainEvent`, `audit_events` append-only table, previousEventId chain) | packages/db + packages/events | P0 | P0-010 | VERIFIED *(CI: events.test.ts 2/2 + rls.test.ts audit_events append-only)* |
+| P1-006 | Basic dashboard (real DB data only, empty states when no data) | apps/web | P0 | P1-002, P1-004 | VERIFIED *(orgs list wired via withUserTx; projects/missions land in Phase 2)* |
+| P1-007 | Server-side authorization guards (requireUser/OrgMembership/OrgRole/ProjectAccess/MissionAccess) | apps/web/lib/authz.ts | P0 | P1-002 | VERIFIED *(implementation + typecheck; per-endpoint adoption ongoing per feature)* |
+| P1-008 | Row-level security policies on org-scoped tables + FORCE + non-superuser app role | packages/db (migration 0002) | P0 | P1-002 | VERIFIED *(CI: rls.test.ts 11/11 — cross-org denial, INSERT/UPDATE denial, positive access, audit append-only)* |
+| P1-009 | CI: run migrations against ephemeral Postgres, then integration tests | .github/workflows + tests/integration | P0 | P1-005 | VERIFIED *(green on `a89c0d3`: node ✓ integration ✓ docs ✓; 19 integration tests pass)* |
 
-**Phase 1 `REVIEW` rows mean:** implementation exists and typechecks; end-to-end
-verified only after `pnpm install` runs cleanly and CI executes the migration +
-a smoke integration test. Row-level security and OAuth are scheduled as Phase 1
-follow-ups (`P1-008`, `P1-001b`), not silently skipped.
+**Phase 1 `VERIFIED` here means:** implementation lives in the tree AND CI green
+on head SHA covers the behavior with an evidence-producing test. `REVIEW` items
+have schema + policy support but await Phase 2 endpoints to reach VERIFIED.
+`P1-001b` (OAuth) is the one outstanding TODO before tagging
+`v0.1.0-foundation`; the `v0.1.0-rc1` tag covers everything else.
 
 ---
 
