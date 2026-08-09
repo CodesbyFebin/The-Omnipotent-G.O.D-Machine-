@@ -3,14 +3,21 @@
 -- RLS policies land in a follow-up migration once schema is reviewed (ADR-0006).
 
 CREATE EXTENSION IF NOT EXISTS "vector";
+--> statement-breakpoint
 
 -- ---------- enums ----------
 CREATE TYPE org_role AS ENUM ('OWNER','ADMIN','DEVELOPER','OPERATOR','REVIEWER','VIEWER');
+--> statement-breakpoint
 CREATE TYPE autonomy_level AS ENUM ('ASK','ASSIST','EXECUTE','AUTONOMOUS','P99');
+--> statement-breakpoint
 CREATE TYPE privacy_class AS ENUM ('PUBLIC','INTERNAL','CONFIDENTIAL','SECRET');
+--> statement-breakpoint
 CREATE TYPE risk_level AS ENUM ('LOW','MEDIUM','HIGH','CRITICAL');
+--> statement-breakpoint
 CREATE TYPE mission_status AS ENUM ('draft','planned','running','paused','verifying','verified','failed','cancelled');
+--> statement-breakpoint
 CREATE TYPE task_status AS ENUM ('pending','blocked','ready','running','waiting_approval','retrying','failed','completed','cancelled');
+--> statement-breakpoint
 
 -- ---------- users + sessions ----------
 CREATE TABLE users (
@@ -20,7 +27,9 @@ CREATE TABLE users (
   created_at    timestamptz NOT NULL DEFAULT now(),
   updated_at    timestamptz NOT NULL DEFAULT now()
 );
+--> statement-breakpoint
 CREATE UNIQUE INDEX users_email_lower_idx ON users (lower(email));
+--> statement-breakpoint
 
 CREATE TABLE sessions (
   id            text PRIMARY KEY,
@@ -33,8 +42,11 @@ CREATE TABLE sessions (
   user_agent    text,
   ip_address    text
 );
+--> statement-breakpoint
 CREATE UNIQUE INDEX sessions_token_hash_idx ON sessions (token_hash);
+--> statement-breakpoint
 CREATE INDEX sessions_user_id_idx ON sessions (user_id);
+--> statement-breakpoint
 
 -- ---------- orgs + memberships ----------
 CREATE TABLE orgs (
@@ -43,7 +55,9 @@ CREATE TABLE orgs (
   name       text NOT NULL,
   created_at timestamptz NOT NULL DEFAULT now()
 );
+--> statement-breakpoint
 CREATE UNIQUE INDEX orgs_slug_idx ON orgs (slug);
+--> statement-breakpoint
 
 CREATE TABLE memberships (
   id         text PRIMARY KEY,
@@ -52,8 +66,11 @@ CREATE TABLE memberships (
   role       org_role NOT NULL,
   created_at timestamptz NOT NULL DEFAULT now()
 );
+--> statement-breakpoint
 CREATE UNIQUE INDEX memberships_org_user_idx ON memberships (org_id, user_id);
+--> statement-breakpoint
 CREATE INDEX memberships_user_id_idx ON memberships (user_id);
+--> statement-breakpoint
 
 -- ---------- projects + repositories ----------
 CREATE TABLE projects (
@@ -64,8 +81,11 @@ CREATE TABLE projects (
   description text NOT NULL DEFAULT '',
   created_at  timestamptz NOT NULL DEFAULT now()
 );
+--> statement-breakpoint
 CREATE UNIQUE INDEX projects_org_slug_idx ON projects (org_id, slug);
+--> statement-breakpoint
 CREATE INDEX projects_org_id_idx ON projects (org_id);
+--> statement-breakpoint
 
 CREATE TABLE repositories (
   id             text PRIMARY KEY,
@@ -75,7 +95,9 @@ CREATE TABLE repositories (
   default_branch text NOT NULL DEFAULT 'main',
   created_at     timestamptz NOT NULL DEFAULT now()
 );
+--> statement-breakpoint
 CREATE INDEX repositories_project_id_idx ON repositories (project_id);
+--> statement-breakpoint
 
 -- ---------- missions + tasks ----------
 CREATE TABLE missions (
@@ -95,9 +117,13 @@ CREATE TABLE missions (
   started_at     timestamptz,
   completed_at   timestamptz
 );
+--> statement-breakpoint
 CREATE INDEX missions_org_id_idx ON missions (org_id);
+--> statement-breakpoint
 CREATE INDEX missions_project_id_idx ON missions (project_id);
+--> statement-breakpoint
 CREATE INDEX missions_status_idx ON missions (status);
+--> statement-breakpoint
 
 CREATE TABLE tasks (
   id                 text PRIMARY KEY,
@@ -114,15 +140,20 @@ CREATE TABLE tasks (
   started_at         timestamptz,
   completed_at       timestamptz
 );
+--> statement-breakpoint
 CREATE INDEX tasks_mission_id_idx ON tasks (mission_id);
+--> statement-breakpoint
 CREATE INDEX tasks_status_idx ON tasks (status);
+--> statement-breakpoint
 
 CREATE TABLE task_dependencies (
   task_id            text NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
   depends_on_task_id text NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
   PRIMARY KEY (task_id, depends_on_task_id)
 );
+--> statement-breakpoint
 CREATE INDEX task_dependencies_depends_on_idx ON task_dependencies (depends_on_task_id);
+--> statement-breakpoint
 
 -- ---------- audit events ----------
 CREATE TABLE audit_events (
@@ -136,8 +167,13 @@ CREATE TABLE audit_events (
   event             jsonb NOT NULL,
   occurred_at       timestamptz NOT NULL DEFAULT now()
 );
+--> statement-breakpoint
 CREATE INDEX audit_events_org_id_idx ON audit_events (org_id);
+--> statement-breakpoint
 CREATE INDEX audit_events_mission_id_idx ON audit_events (mission_id);
+--> statement-breakpoint
 CREATE INDEX audit_events_task_id_idx ON audit_events (task_id);
+--> statement-breakpoint
 CREATE INDEX audit_events_type_idx ON audit_events (type);
+--> statement-breakpoint
 CREATE INDEX audit_events_occurred_at_idx ON audit_events (occurred_at);
