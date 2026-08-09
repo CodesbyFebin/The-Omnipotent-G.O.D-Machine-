@@ -15,6 +15,13 @@
       "when": 1723200060000,
       "tag": "0002_row_level_security",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1723200120000,
+      "tag": "0004_mission_runtime",
+      "breakpoints": true
     }
   ]
 }
